@@ -1,6 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
-function Field({ label, value, onChange, placeholder, type = "text" }) {
+function Field({
+   label,
+   value,
+   onChange,
+   placeholder,
+   type = "text",
+   inputMode,
+   autoComplete,
+}) {
    return (
       <label className="block">
          <div className="text-xs tracking-luxe uppercase text-muted">
@@ -8,6 +16,8 @@ function Field({ label, value, onChange, placeholder, type = "text" }) {
          </div>
          <input
             type={type}
+            inputMode={inputMode}
+            autoComplete={autoComplete}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
@@ -24,6 +34,9 @@ export default function StepIdentity({
    onBack,
    navLocked,
 }) {
+   const [error, setError] = useState("");
+
+   // Minimal fields untuk enable tombol next
    const isValid = useMemo(() => {
       return Boolean(
          value.fullName?.trim() &&
@@ -31,6 +44,55 @@ export default function StepIdentity({
             value.contactPerson?.trim()
       );
    }, [value.fullName, value.phone, value.contactPerson]);
+
+   const validateAndNext = () => {
+      setError("");
+
+      const fullName = (value.fullName || "").trim();
+      const phone = (value.phone || "").trim();
+      const email = (value.email || "").trim();
+      const contactPerson = (value.contactPerson || "").trim();
+
+      // minimal required
+      if (!fullName || !phone || !contactPerson) {
+         setError("Isi minimal: Nama Lengkap, No. HP/WA, dan Contact Person.");
+         return;
+      }
+
+      // nama minimal 3 karakter
+      if (fullName.length < 3) {
+         setError("Nama Lengkap minimal 3 karakter.");
+         return;
+      }
+
+      // contact person minimal 2 karakter
+      if (contactPerson.length < 2) {
+         setError("Contact Person minimal 2 karakter.");
+         return;
+      }
+
+      // phone digits only + length
+      if (!/^[0-9]{9,15}$/.test(phone)) {
+         setError("No. HP/WA harus angka (9–15 digit). Contoh: 08123456789");
+         return;
+      }
+
+      // OPTIONAL: jika kamu ingin nomor WA Indonesia wajib mulai 08, biarkan ON.
+      // Kalau kamu mau menerima +62 / 62 / dll, bilang ya nanti aku buat format yang lebih fleksibel.
+      if (!phone.startsWith("08")) {
+         setError("No. HP/WA harus diawali 08. Contoh: 08123456789");
+         return;
+      }
+
+      // email optional, but if filled must be valid (boleh domain apa saja)
+      // NOTE: validasi ini sengaja tidak membatasi hanya gmail
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+         setError("Format email tidak valid. Contoh: nama@email.com");
+         return;
+      }
+
+      onNext();
+   };
 
    return (
       <div>
@@ -46,26 +108,40 @@ export default function StepIdentity({
          <div className="mt-6 grid md:grid-cols-2 gap-4">
             <Field
                label="Nama Lengkap"
-               value={value.fullName}
+               value={value.fullName || ""}
                onChange={(v) => onChange((s) => ({ ...s, fullName: v }))}
                placeholder="Contoh: Adhitiya Ayu Puspitasari"
+               autoComplete="name"
             />
+
             <Field
                label="No. HP / WhatsApp"
-               value={value.phone}
-               onChange={(v) => onChange((s) => ({ ...s, phone: v }))}
-               placeholder="08xxxxxxxxxx"
+               value={value.phone || ""}
+               onChange={(v) =>
+                  onChange((s) => ({
+                     ...s,
+                     phone: String(v).replace(/\D/g, ""), // keep digits only
+                  }))
+               }
+               placeholder="08123456789"
+               inputMode="numeric"
+               autoComplete="tel"
+               type="tel"
             />
+
             <Field
-               label="Email"
+               label="Email (opsional)"
                type="email"
-               value={value.email}
+               value={value.email || ""}
                onChange={(v) => onChange((s) => ({ ...s, email: v }))}
-               placeholder="nama@email.com"
+               placeholder="nama@email.com (gmail/yahoo/outlook boleh)"
+               inputMode="email"
+               autoComplete="email"
             />
+
             <Field
                label="Contact Person"
-               value={value.contactPerson}
+               value={value.contactPerson || ""}
                onChange={(v) => onChange((s) => ({ ...s, contactPerson: v }))}
                placeholder="Nama PIC yang dapat dihubungi"
             />
@@ -76,7 +152,7 @@ export default function StepIdentity({
                Alamat
             </div>
             <textarea
-               value={value.address}
+               value={value.address || ""}
                onChange={(e) =>
                   onChange((s) => ({ ...s, address: e.target.value }))
                }
@@ -90,7 +166,7 @@ export default function StepIdentity({
                Catatan tambahan
             </div>
             <textarea
-               value={value.notes}
+               value={value.notes || ""}
                onChange={(e) =>
                   onChange((s) => ({ ...s, notes: e.target.value }))
                }
@@ -99,9 +175,17 @@ export default function StepIdentity({
             />
          </div>
 
-         {!isValid && (
+         {/* helper minimal */}
+         {!isValid && !error && (
             <div className="mt-4 text-sm text-champagne">
                Isi minimal: Nama Lengkap, No. HP/WA, dan Contact Person.
+            </div>
+         )}
+
+         {/* error box */}
+         {error && (
+            <div className="mt-4 text-sm rounded-xl border border-pink-400/30 bg-pink-500/10 px-4 py-3 text-pink-100">
+               {error}
             </div>
          )}
 
@@ -118,8 +202,9 @@ export default function StepIdentity({
             >
                Back
             </button>
+
             <button
-               onClick={onNext}
+               onClick={validateAndNext}
                disabled={navLocked || !isValid}
                className={[
                   "px-5 py-3 rounded-xl text-xs tracking-luxe uppercase shadow-soft transition",
