@@ -241,7 +241,7 @@ export default function LandingPage() {
                });
             }
 
-            // JOURNEY: pinned steps + active state
+            // JOURNEY: pinned steps + active state (desktop only)
             if (journeyRef.current) {
                const count = steps.length;
 
@@ -532,7 +532,22 @@ export default function LandingPage() {
                            return (
                               <button
                                  key={s.title}
+                                 type="button"
                                  onClick={() => {
+                                    const isMobile =
+                                       typeof window !== "undefined" &&
+                                       window.matchMedia(
+                                          "(max-width: 1023px)"
+                                       ).matches;
+
+                                    // Mobile: tap to change step (no immersive scroll dependency)
+                                    if (isMobile) {
+                                       journeyStepRef.current = i;
+                                       setJourneyStep(i);
+                                       return;
+                                    }
+
+                                    // Desktop: keep immersive storytelling behavior
                                     journeyRef.current?.scrollIntoView({
                                        behavior: reducedMotion
                                           ? "auto"
