@@ -134,7 +134,7 @@ export default function StepIdentity({
                type="email"
                value={value.email || ""}
                onChange={(v) => onChange((s) => ({ ...s, email: v }))}
-               placeholder="nama@email.com (gmail/yahoo/outlook boleh)"
+               placeholder="nama@email.com"
                inputMode="email"
                autoComplete="email"
             />
